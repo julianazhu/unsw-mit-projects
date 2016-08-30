@@ -32,16 +32,15 @@ except IndexError:
 # Create the socket to internet, UDP
 sock = socket.socket(socket.AF_INET,            # internet
                      socket.SOCK_DGRAM)         # UDP
-sock.settimeout(1)                              # second/s
 
 
 # Send file over UDP in chunks of data no larger than max_segment_size
 f = open(file_to_send, "rb")
-data = f.read(BUFFER)
+data = f.read(48)
 while (data):
     if(sock.sendto(data, (receiver_host_IP, receiver_port))):
         print("sending...")
-        data = f.read(24)
+        data = f.read(48)
 sock.close()
 f.close
 

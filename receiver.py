@@ -12,7 +12,7 @@ import datetime
 
 
 RECEIVER_IP = "127.0.0.1"
-BUFFER = 1024                             # bytes
+BUFFER = 24                             # bytes
 
 
 # Command line arguments
@@ -29,13 +29,14 @@ sock = socket.socket(socket.AF_INET,      # internet
                      socket.SOCK_DGRAM)   # UDP
 sock.bind((RECEIVER_IP, receiver_port))
 
+
+# Receive file and write to specified filename.
 while True:
-   data, addr = sock.recvfrom(BUFFER)
+   data, addr = sock.recvfrom(24)
    print("Received File:", data)
-   f = open(filename, 'wb')
-   for line in data:
-      f.write(line)
-   data, addr = sock.recvfrom(BUFFER)
+   with open(filename, 'a') as f:
+      f.write(data)
+   data, addr = sock.recvfrom(24)
    f.close()
    print("File Downloaded")
 
