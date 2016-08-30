@@ -39,7 +39,7 @@ f = open(file_to_send, "rb")
 data = f.read(48)
 while (data):
     if(sock.sendto(data, (receiver_host_IP, receiver_port))):
-        print("sending...")
+        print("sending...", data)
         data = f.read(48)
 sock.close()
 f.close

@@ -12,7 +12,7 @@ import datetime
 
 
 RECEIVER_IP = "127.0.0.1"
-BUFFER = 24                             # bytes
+BUFFER = 48                             # bytes
 
 
 # Command line arguments
@@ -32,13 +32,11 @@ sock.bind((RECEIVER_IP, receiver_port))
 
 # Receive file and write to specified filename.
 while True:
-   data, addr = sock.recvfrom(24)
+   data, addr = sock.recvfrom(48)
    print("Received File:", data)
    with open(filename, 'a') as f:
       f.write(data)
-   data, addr = sock.recvfrom(24)
    f.close()
-   print("File Downloaded")
 
 
 
