@@ -1,7 +1,8 @@
 # This program sends ping requests to port specified by the user. 
 # Written by Juliana Zhu, z3252163 
 # Written for COMP9331 16s2, Assignment 1. 
-
+#
+# Python 3.0
 
 import sys
 import socket
@@ -25,7 +26,7 @@ try:
     # seed = int(sys.argv[8])                  # random number seed
 except IndexError:
     print('Incorrect arguments. Usage: sender.py <receiver_host_ip>' 
-        ' <receiver_port> <file.txt> <MWS> <MSS> <timeout> <pdrop> <seed>')
+        ' <receiver_port> not yet implemented - <file.txt> <MWS> <MSS> <timeout> <pdrop> <seed>')
     sys.exit()
 
 

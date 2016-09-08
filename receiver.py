@@ -4,6 +4,8 @@
 #
 # Written by Juliana Zhu, z3252163
 # Written for COMP9331 16s2, Assignment 1. 
+#
+# Python 3.0
 
 
 import sys
@@ -19,10 +21,9 @@ BUFFER = 48                             # bytes
 try:
    receiver_port = int(sys.argv[1])
    filename = sys.argv[2]
-except IndexError:
+except (IndexError, ValueError):
    print("Incorrect arguments. Usage: receiver.py <receiver_port> <file.txt>")
    sys.exit()
-
 
 # Open the listening socket port.
 sock = socket.socket(socket.AF_INET,      # internet
@@ -33,6 +34,7 @@ sock.bind((RECEIVER_IP, receiver_port))
 # Receive file and write to specified filename.
 while True:
    data, addr = sock.recvfrom(48)
+   data = data.decode("unicode_escape")
    print("Received File:", data)
    with open(filename, 'a') as f:
       f.write(data)
