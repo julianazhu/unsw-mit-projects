@@ -12,7 +12,7 @@
 import sys
 import socket
 import datetime
-from stp_headers import receive_segment      # helper
+from stp_headers import receive_segment     # helper
 from stp_headers import create_header       # helper
 from stp_headers import interpret_header    # helper
 
@@ -34,6 +34,9 @@ def receive_ACK(expected_ack):
     else:
         wait_for_SYNACK(expected_ack)
 
+def receive_data(expected_ack):
+    pass
+
 # ===== MAIN =====
 # Command line arguments
 try:
@@ -53,6 +56,7 @@ send_SYNACK(return_addr, received_sequence_no, sequence_number)
 sequence_number += 1
 receive_ACK(sequence_number)
 print("Successfully received ACK")
+receive_data(sequence_number)
 # if segment_type == "SYN":
 #     generate_ack(sequence_number, ack_number)
 

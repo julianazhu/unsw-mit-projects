@@ -12,7 +12,7 @@ import sys
 import socket
 import datetime
 import random
-from stp_headers import receive_segment      # helper
+from stp_headers import receive_segment     # helper
 from stp_headers import create_header       # helper
 from stp_headers import interpret_header    # helper
 
@@ -35,13 +35,27 @@ def send_ACK(return_addr, ack_number, sequence_number):
     segment = header
     sock.sendto(segment, (return_addr))
 
+def send_data(sequence_number, ack_number):
+# Send file over UDP in chunks of data no larger than max_segment_size
+    f = open(file_to_send, "rb")
+    data = f.read(48)
+    while (data):
+        data_length = len(data)
+        # print("data_length=", data_length)
+        header = create_header("PUSH", sequence_number, ack_number, data_length)
+        segment = header + data
+        print("Sending:", segment)
+        if(sock.sendto(segment, (receiver_host_IP, receiver_port))):
+            data = f.read(48)
+
+
 # ==== MAIN ====
 # Get command line arguments
 try:
     receiver_host_IP = sys.argv[1]
     receiver_port = int(sys.argv[2])
     file_to_send = sys.argv[3]
-    # max_window_size = sys.argv[4]            # bytes
+    # max_window_size = sys.argv[4]            # number of MSSs allowed in window
     # max_segment_size = sys.argv[5]           # bytes
     # timeout = sys.argv[6]                    # milliseconds
 
@@ -63,12 +77,4 @@ sequence_number += 1
 return_addr, received_sequence_no, received_ack_no = receive_SYNACK(sequence_number)
 print("Successfully received SYNACK")
 send_ACK(return_addr, received_sequence_no, sequence_number)
-# Send file over UDP in chunks of data no larger than max_segment_size
-# f = open(file_to_send, "rb")
-# data = f.read(48) #+ headerFIRST
-# while (data):
-#     if(sock.sendto(data, (receiver_host_IP, receiver_port))):
-#         print("sending...", data)
-#         data = f.read(48) #+headerFIRST
-# f.close
-# sock.close()
+send_data(sequence_number, received_sequence_no)
