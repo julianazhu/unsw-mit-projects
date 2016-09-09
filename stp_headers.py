@@ -1,15 +1,20 @@
 # This helper file contains the functions that create and interpret headers
 # for the Simple Transport Protocol (STP).
 #
+# STP Header Format: 
+#   Sequence No. (4 bytes), Acknowledgement No. (4 bytes)
+#   Padding (4 bits), Flags (4 bits)
+#
+#
 # Written by Juliana Zhu, z3252163 
 # Written for COMP9331 16s2, Assignment 1. 
 #
 # Python 3.0
 
-# STP Header Format: 
-#   Sequence No. (4 bytes), Acknowledgement No. (4 bytes)
-#   Padding (4 bits), Flags (4 bits)
-#
+
+import struct
+
+
 # 'segment_type' parameter accepts "SYN", "ACK", "SYNACK", "PUSH", "FIN"
 def create_header(segment_type, sequence_number, ack_number, *data_length):
     sequence_number = format(sequence_number, '032b')
@@ -33,6 +38,7 @@ def create_header(segment_type, sequence_number, ack_number, *data_length):
     header = int(header_as_str, 2).to_bytes(len(header_as_str) // 8, byteorder='big')
     return header
 
+
 def interpret_header(header):
     # 'Struct.unpack' translates byte array to a tuple initially.
     sequence_number = struct.unpack(">i", header[:4])
@@ -52,4 +58,4 @@ def interpret_header(header):
         print("Unknown segment type:", segment_type)
         sys.exit()
     print("segment_type:", segment_type)
-    return sequence_number, ack_number, segment_type
+    return segment_type, sequence_number, ack_number
