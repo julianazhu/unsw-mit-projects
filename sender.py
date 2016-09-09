@@ -35,8 +35,6 @@ def create_header(sequence_number, segment_type, ack_number, *data_length):
     ack_number = format(ack_number, '032b')
     if  segment_type == "SYN":
         flags = format(0b1000, '04b')
-    elif segment_type == "SYNACK":
-        flags = format(0b1100, '04b')
     elif segment_type == "ACK":
         flags = format(0b0100, '04b')
     elif segment_type == "PUSH":
@@ -52,6 +50,10 @@ def create_header(sequence_number, segment_type, ack_number, *data_length):
     header = int(header_as_str, 2).to_bytes(len(header_as_str) // 8, byteorder='big')
     return header
 
+def wait_for_ACK():
+    while True:
+        data, addr = sock.recvfrom(48+HEADER_SIZE)
+        print("Received Response:", data)
 
 # ==== MAIN ====
 # Get command line arguments
@@ -77,7 +79,7 @@ sock = socket.socket(socket.AF_INET,           # internet
 sock.settimeout(5)                             # seconds
 initial_sequence_number = 500 # Temp => change to random no. after testing
 send_SYN(initial_sequence_number)
-
+wait_for_ACK
 # Send file over UDP in chunks of data no larger than max_segment_size
 # f = open(file_to_send, "rb")
 # data = f.read(48) #+ headerFIRST
