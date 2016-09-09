@@ -7,18 +7,18 @@
 #
 # Python 3.0
 
-
 import sys
 import socket
 import datetime
 import random
+import stp_headers # helper file
 
 
 HEADER_SIZE = 9 # bytes
 
 
 def send_SYN(sequence_number):
-    header = create_header(sequence_number, "SYN", 5050) #temporary ack number
+    header = create_header("SYN", sequence_number, 5050) #temporary ack number
     segment = header
     # data = "The quick brown fox blahs"
     sock.sendto(segment, (receiver_host_IP, receiver_port))
@@ -30,7 +30,7 @@ def send_SYN(sequence_number):
 #   Padding (4 bits), Flags (4 bits)
 #
 # 'segment_type' parameter accepts "SYN", "ACK", "SYNACK", "PUSH", "FIN"
-def create_header(sequence_number, segment_type, ack_number, *data_length):
+def create_header(segment_type, sequence_number, ack_number, *data_length):
     sequence_number = format(sequence_number, '032b')
     ack_number = format(ack_number, '032b')
     if  segment_type == "SYN":
@@ -49,6 +49,25 @@ def create_header(sequence_number, segment_type, ack_number, *data_length):
     # Convert header to byte array:
     header = int(header_as_str, 2).to_bytes(len(header_as_str) // 8, byteorder='big')
     return header
+
+def interpret_header(header):
+    # 'Struct.unpack' translates byte array to a tuple initially.
+    sequence_number = struct.unpack(">i", header[:4])
+    sequence_number = sequence_number[0]
+    ack_number = struct.unpack(">i", header[4:8])
+    ack_number = ack_number[0]
+    flags = header[8]
+    if flags == 0b1100:
+        segment_type = "SYNACK"
+    elif flags == 0b0100:
+        segment_type = "ACK"       
+    elif flags == 0b0001:
+        segment_type = "FIN"
+    else:
+        print("Unknown segment type:", segment_type)
+        sys.exit()
+    print("segment_type:", segment_type)
+    return sequence_number, ack_number, segment_type
 
 def wait_for_ACK():
     while True:
@@ -76,10 +95,10 @@ except (IndexError, ValueError):
 # Create the socket to internet, UDP
 sock = socket.socket(socket.AF_INET,           # internet
                      socket.SOCK_DGRAM)        # UDP
-sock.settimeout(5)                             # seconds
-initial_sequence_number = 500 # Temp => change to random no. after testing
+# sock.settimeout(5)                             # seconds
+initial_sequence_number = 0 # Temp => change to random no. after testing
 send_SYN(initial_sequence_number)
-wait_for_ACK
+wait_for_ACK()
 # Send file over UDP in chunks of data no larger than max_segment_size
 # f = open(file_to_send, "rb")
 # data = f.read(48) #+ headerFIRST
@@ -88,4 +107,4 @@ wait_for_ACK
 #         print("sending...", data)
 #         data = f.read(48) #+headerFIRST
 # f.close
-sock.close()
+# sock.close()

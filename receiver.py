@@ -13,6 +13,7 @@ import sys
 import socket
 import datetime
 import struct
+import stp_headers
 
 
 RECEIVER_IP = "127.0.0.1"
@@ -33,21 +34,22 @@ def interpret_header(header):
     elif flags == 0b0010:
         segment_type = "PUSH"            
     elif flags == 0b0001:
-        segment_type = "FIN"    
+        segment_type = "FIN"
     else:
         print("Unknown segment type:", segment_type)
         sys.exit()
     print("segment_type:", segment_type)
     return sequence_number, ack_number, segment_type
 
-def generate_synack(sender_addr, sender_sequence_number, sender_ack_number):
-
-    # header = create_header(sequence_number, segment_type, ack_number)
-    # segment = header
-    # sock.sendto(segment, (sender_addr))
+def generate_synack(sender_addr, sender_sequence_number):
+    sequence_number = 0 # Temp => change to random no. after testing
+    ack_number = sender_sequence_number + 1 
+    header = create_header("SYNACK", sequence_number, ack_number)
+    segment = header
+    sock.sendto(segment, (sender_addr))
     pass
 
-def create_header(sequence_number, segment_type, ack_number, *data_length):
+def create_header(segment_type, sequence_number, ack_number, *data_length):
     sequence_number = format(sequence_number, '032b')
     ack_number = format(ack_number, '032b')
     if segment_type == "SYNACK":
@@ -64,7 +66,7 @@ def create_header(sequence_number, segment_type, ack_number, *data_length):
     header = int(header_as_str, 2).to_bytes(len(header_as_str) // 8, byteorder='big')
     return header
 
-# MAIN:
+# ===== MAIN =====
 # Command line arguments
 try:
     receiver_port = int(sys.argv[1])
@@ -86,7 +88,7 @@ while True:
     data = data[HEADER_SIZE+1:]
     print("Received File => Header: {} Data: {}".format(header, data))
     sender_sequence_number, sender_ack_number, segment_type = interpret_header(header)
-    generate_synack(sender_addr, sender_sequence_number, sender_ack_number)
+    generate_synack(sender_addr, sender_sequence_number)
     # if segment_type == "SYN":
     #     generate_ack(sequence_number, ack_number)
 
