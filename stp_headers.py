@@ -13,12 +13,14 @@
 
 
 import struct
+import sys
 
 
 HEADER_SIZE = 9 # bytes
 
 
 def receive_segment(sock):
+    # print("managed to get here at least")
     while True:
         data, return_addr = sock.recvfrom(48 + HEADER_SIZE)
         header = data[:HEADER_SIZE]
@@ -27,23 +29,21 @@ def receive_segment(sock):
         segment_type, received_sequence_no, received_ack_no = interpret_header(header)
         print("Unpacked =>  TYPE: {}, SEQ:{}, ACK:{}"
             .format(segment_type, received_sequence_no, received_ack_no))
-        return return_addr, segment_type, received_sequence_no, received_ack_no
+        return return_addr, segment_type, received_sequence_no, received_ack_no, data
 
 # 'segment_type' parameter accepts "SYN", "ACK", "SYNACK", "PUSH", "FIN"
-def create_header(segment_type, sequence_number, ack_number, *data_length):
+def create_header(segment_type, sequence_number, ack_number):
     sequence_number = format(sequence_number, '032b')
+    ack_number = format(ack_number, '032b')
+    padding = format(0, '04b')
 
-    if segment_type != "PUSH":
-        ack_number = format(ack_number, '032b')
-
-    if  segment_type == "SYN":
+    if segment_type == "SYN":
         flags = format(0b1000, '04b')
     elif segment_type == "ACK":
         flags = format(0b0100, '04b')
     elif segment_type == "SYNACK":
         flags = format(0b1100, '04b')
     elif segment_type == "PUSH":
-        ack_number = format(ack_number + data_length[0], '032b')
         flags = format(0b0010, '04b')
     elif segment_type == "FIN":
         flags = format(0b0001, '04b')
@@ -51,7 +51,8 @@ def create_header(segment_type, sequence_number, ack_number, *data_length):
         print("Unknown segment type:", segment_type)
         sys.exit()
 
-    header_as_str = sequence_number + ack_number + '0000' + flags
+
+    header_as_str = sequence_number + ack_number + padding + flags
     # Convert header to byte array:
     header = int(header_as_str, 2).to_bytes(len(header_as_str) // 8, byteorder='big')
     return header
@@ -69,10 +70,12 @@ def interpret_header(header):
     elif flags == 0b1100:
         segment_type = "SYNACK"
     elif flags == 0b0100:
-        segment_type = "ACK"       
+        segment_type = "ACK"
+    elif flags == 0b0010:
+        segment_type = "PUSH"
     elif flags == 0b0001:
         segment_type = "FIN"
     else:
-        print("Unknown segment type:", segment_type)
+        print("Unknown segment type:", flags)
         sys.exit()
     return segment_type, sequence_number, ack_number

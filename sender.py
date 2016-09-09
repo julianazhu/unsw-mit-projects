@@ -24,30 +24,46 @@ def send_SYN(sequence_number):
     sock.sendto(segment, (receiver_host_IP, receiver_port))
 
 def receive_SYNACK(expected_ack):
-    return_addr, segment_type, received_sequence_no, received_ack_no = receive_segment(sock)
+    return_addr, segment_type, received_sequence_no, received_ack_no, data = receive_segment(sock)
     if segment_type == "SYNACK" and received_ack_no == expected_ack:
         return return_addr, received_sequence_no, received_ack_no
     else:
-        wait_for_ACK(expected_ack)
+        receive_SYNACK(expected_ack)
 
 def send_ACK(return_addr, ack_number, sequence_number):
-    header = create_header("ACK", sequence_number, ack_number+1)
-    segment = header
+    segment = create_header("ACK", sequence_number, ack_number+1)
     sock.sendto(segment, (return_addr))
 
 def send_data(sequence_number, ack_number):
+    print("Sending data")
+    print("sequence_number", sequence_number)
+    print("ack_number", ack_number)
 # Send file over UDP in chunks of data no larger than max_segment_size
     f = open(file_to_send, "rb")
     data = f.read(48)
     while (data):
         data_length = len(data)
         # print("data_length=", data_length)
-        header = create_header("PUSH", sequence_number, ack_number, data_length)
+        header = create_header("PUSH", sequence_number + data_length, ack_number)
         segment = header + data
         print("Sending:", segment)
         if(sock.sendto(segment, (receiver_host_IP, receiver_port))):
+            return_addr, received_sequence_no, received_ack_no = receive_ACK(sequence_number)
+            print("Received the ACK for the segment just sent")
             data = f.read(48)
 
+def send_FIN(sequence_number, ack_number):
+    segment = create_header("FIN", sequence_number, ack_number+1)
+    sock.sendto(segment, (return_addr))
+
+def receive_ACK(expected_ack):
+    print("expected_ack=", expected_ack)
+    return_addr, segment_type, received_sequence_no, received_ack_no, data = receive_segment(sock)
+    print("received ack =", received_ack_no)
+    if segment_type == "ACK" and received_ack_no == expected_ack:
+        return return_addr, received_sequence_no, received_ack_no
+    else:
+        receive_ACK(expected_ack)
 
 # ==== MAIN ====
 # Get command line arguments
@@ -75,6 +91,12 @@ sequence_number = 0 # Temp => change to random no. after testing
 send_SYN(sequence_number)
 sequence_number += 1
 return_addr, received_sequence_no, received_ack_no = receive_SYNACK(sequence_number)
-print("Successfully received SYNACK")
 send_ACK(return_addr, received_sequence_no, sequence_number)
-send_data(sequence_number, received_sequence_no)
+send_data(received_sequence_no, sequence_number)
+print("all data sent")
+return_addr, received_sequence_no, received_ack_no = receive_ACK(sequence_number)
+send_FIN(sequence_number, received_sequence_no)
+print("successfully sent FIN")
+receive_ACK(sequence_number)
+print("received final ACK, TERMINATING")
+sock.close()

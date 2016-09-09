@@ -28,14 +28,30 @@ def send_SYNACK(return_addr, received_sequence_number, sequence_number):
     sock.sendto(segment, (return_addr))
 
 def receive_ACK(expected_ack):
-    return_addr, segment_type, received_sequence_no, received_ack_no = receive_segment(sock)
+    return_addr, segment_type, received_sequence_no, received_ack_no, data = receive_segment(sock)
     if segment_type == "ACK" and received_ack_no == expected_ack:
         return return_addr, received_sequence_no, received_ack_no
     else:
-        wait_for_SYNACK(expected_ack)
+        receive_ACK(expected_ack)
 
 def receive_data(expected_ack):
-    pass
+    while True:
+        return_addr, segment_type, received_sequence_no, received_ack_no, data = receive_segment(sock)
+        print("EXPECTED_ACK = ", expected_ack)
+        print("received_ack_no=", received_ack_no)
+        if segment_type == "PUSH" and received_ack_no == expected_ack:
+            with open(filename, 'a') as f:
+                f.write(data.decode("ascii"))
+                f.close()
+            send_ACK(return_addr, received_sequence_no, received_ack_no)
+            expected_ack = received_ack_no
+        elif segment_type == "FIN":
+            return return_addr, received_sequence_no, received_ack_no
+
+def send_ACK(return_addr, ack_number, sequence_number):
+    segment = create_header("ACK", sequence_number, ack_number)
+    sock.sendto(segment, (return_addr))
+    print("Just sent the ACK")
 
 # ===== MAIN =====
 # Command line arguments
@@ -51,16 +67,12 @@ sock = socket.socket(socket.AF_INET,                # internet
                             socket.SOCK_DGRAM)      # UDP
 sock.bind((RECEIVER_IP, receiver_port))
 sequence_number = 0 # Temp => change to random no. after testing
-return_addr, segment_type, received_sequence_no, received_ack_no = receive_segment(sock)
+return_addr, segment_type, received_sequence_no, received_ack_no, data = receive_segment(sock)
 send_SYNACK(return_addr, received_sequence_no, sequence_number)
 sequence_number += 1
-receive_ACK(sequence_number)
+return_addr, received_sequence_no, received_ack_no = receive_ACK(sequence_number)
 print("Successfully received ACK")
-receive_data(sequence_number)
+return_addr, received_sequence_no, received_ack_no = receive_data(sequence_number)
+print("all data received, just finalising")
 # if segment_type == "SYN":
 #     generate_ack(sequence_number, ack_number)
-
-# with open(filename, 'a') as f:
-    # f.write(data)
-# f.close()
-
