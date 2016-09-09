@@ -14,13 +14,20 @@ import datetime
 import random
 
 
+HEADER_SIZE = 9 # bytes
+
+
 def send_SYN(sequence_number):
-   header = create_header(sequence_number, "SYN", 5050) #temporary ack number
+    header = create_header(sequence_number, "SYN", 5050) #temporary ack number
+    segment = header
+    # data = "The quick brown fox blahs"
+    sock.sendto(segment, (receiver_host_IP, receiver_port))
+
 
 
 # STP Header Format: 
 #   Sequence No. (4 bytes), Acknowledgement No. (4 bytes)
-#   Flags (4 bits), Padding (4 bits)
+#   Padding (4 bits), Flags (4 bits)
 #
 # 'segment_type' parameter accepts "SYN", "ACK", "SYNACK", "PUSH", "FIN"
 def create_header(sequence_number, segment_type, ack_number, *data_length):
@@ -40,21 +47,10 @@ def create_header(sequence_number, segment_type, ack_number, *data_length):
     else:
         print("Unknown segment type:", segment_type)
         sys.exit()
-    header_as_str = sequence_number + ack_number + flags + '0000'
-    # conversion to bytes
+    header_as_str = sequence_number + ack_number + '0000' + flags
+    # Convert header to byte array:
     header = int(header_as_str, 2).to_bytes(len(header_as_str) // 8, byteorder='big')
     return header
-
-
-# Send file over UDP in chunks of data no larger than max_segment_size
-# f = open(file_to_send, "rb")
-# data = f.read(48)
-# while (data):
-#     if(sock.sendto(data, (receiver_host_IP, receiver_port))):
-
-#         print("sending...", data)
-#         data = f.read(48)
-# f.close
 
 
 # ==== MAIN ====
@@ -78,14 +74,16 @@ except (IndexError, ValueError):
 # Create the socket to internet, UDP
 sock = socket.socket(socket.AF_INET,           # internet
                      socket.SOCK_DGRAM)        # UDP
-
+sock.settimeout(5)                             # seconds
 initial_sequence_number = 500 # Temp => change to random no. after testing
 send_SYN(initial_sequence_number)
+
+# Send file over UDP in chunks of data no larger than max_segment_size
+# f = open(file_to_send, "rb")
+# data = f.read(48) #+ headerFIRST
+# while (data):
+#     if(sock.sendto(data, (receiver_host_IP, receiver_port))):
+#         print("sending...", data)
+#         data = f.read(48) #+headerFIRST
+# f.close
 sock.close()
-
-
-
-
-
-
-connect

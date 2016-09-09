@@ -12,130 +12,68 @@
 import sys
 import socket
 import datetime
+import struct
 
 
 RECEIVER_IP = "127.0.0.1"
+HEADER_SIZE = 9 # bytes
 
 
+def interpret_header(header):
+    sequence_number = header[:4]
+    sequence_number = struct.unpack(">i", sequence_number)
+    # 'Struct.unpack' translates the byte array to a tuple, hence need to 
+    # further unpack.
+    sequence_number = sequence_number[0]
+    ack_number = header[4:8]
+    ack_number = struct.unpack(">i", ack_number)
+    ack_number = ack_number[0]
+    flags = header[8]
+    if flags == 0b1000:
+        segment_type = "SYN"
+    elif flags == 0b1100:
+        segment_type == "SYNACK"
+    elif flags == 0b0100:
+        segment_type = "ACK"    
+    elif flags == 0b0010:
+        segment_type = "PUSH"            
+    elif flags == 0b0001:
+        segment_type = "FIN"    
+    else:
+        print("Unknown segment type:", segment_type)
+        sys.exit()
+    print("segment_type:", segment_type)
+    return sequence_number, ack_number, segment_type
+
+# def generate_ack(sequence_number, ack_number):
+#     sock.sendto(segment, (receiver_host_IP, receiver_port))
+
+# MAIN:
 # Command line arguments
 try:
-   receiver_port = int(sys.argv[1])
-   filename = sys.argv[2]
+    receiver_port = int(sys.argv[1])
+    filename = sys.argv[2]
 except (IndexError, ValueError):
-   print("Incorrect arguments. Usage: receiver.py <receiver_port> <file.txt>")
-   sys.exit()
+    print("Incorrect arguments. Usage: receiver.py <receiver_port> <file.txt>")
+    sys.exit()
 
 # Open the listening socket port.
 sock = socket.socket(socket.AF_INET,      # internet
-                     socket.SOCK_DGRAM)   # UDP
+                            socket.SOCK_DGRAM)   # UDP
 sock.bind((RECEIVER_IP, receiver_port))
 
 
 # Receive file and write to specified filename.
 while True:
-   data, addr = sock.recvfrom(48)
-   data = data.decode()
-   print("Received File:", data)
-   with open(filename, 'a') as f:
-      f.write(data)
-   f.close()
+    data, addr = sock.recvfrom(48+HEADER_SIZE)
+    header = data[:HEADER_SIZE]
+    data = data[HEADER_SIZE+1:]
+    print("Received File => Header: {} Data: {}".format(header, data))
+    sequence_number, ack_number, segment_type = interpret_header(header)
+    # if segment_type == "SYN":
+    #     generate_ack(sequence_number, ack_number)
 
+    # with open(filename, 'a') as f:
+        # f.write(data)
+    # f.close()
 
-
-
-
-
-
-
-
-# public class PingServer
-# {
-#    private static final double LOSS_RATE = 0.3;
-#    private static final int AVERAGE_DELAY = 100;  // milliseconds
-
-#    public static void main(String[] args) throws Exception
-#    {
-#       // Get command line argument.
-#       if (args.length != 1) {
-#          System.out.println("Required arguments: port");
-#          return;
-#       }
-#       int port = Integer.parseInt(args[0]);
-
-#       // Create random number generator for use in simulating 
-#       // packet loss and network delay.
-#       Random random = new Random();
-
-#       // Create a datagram socket for receiving and sending UDP packets
-#       // through the port specified on the command line.
-#       DatagramSocket socket = new DatagramSocket(port);
-
-#       System.out.println(socket.getLocalAddress());
-
-#       String localIP = InetAddress.getLocalHost().getHostAddress();
-#       System.out.println(localIP);
-
-#       // Processing loop.
-#       while (true) {
-#          // Create a datagram packet to hold incomming UDP packet.
-#          DatagramPacket request = new DatagramPacket(new byte[1024], 1024);
-
-#          // Block until the host receives a UDP packet.
-#          socket.receive(request);
-         
-#          // Print the recieved data.
-#          printData(request);
-
-#          // Decide whether to reply, or simulate packet loss.
-#          if (random.nextDouble() < LOSS_RATE) {
-#             System.out.println("   Reply not sent.");
-#             continue; 
-#          }
-
-#          // Simulate network delay.
-#          Thread.sleep((int) (random.nextDouble() * 2 * AVERAGE_DELAY));
-
-
-#          // Send reply.
-#          InetAddress clientHost = request.getAddress();
-#          int clientPort = request.getPort();
-#          byte[] buf = request.getData();
-#          DatagramPacket reply = new DatagramPacket(buf, buf.length, clientHost, clientPort);
-#          socket.send(reply);
-
-#          System.out.println("   Reply sent.");
-#       }
-#    }
-
-#    /* 
-#     * Print ping data to the standard output stream.
-#     */
-#    private static void printData(DatagramPacket request) throws Exception
-#    {
-#       // Obtain references to the packet's array of bytes.
-#       byte[] buf = request.getData();
-
-#       // Wrap the bytes in a byte array input stream,
-#       // so that you can read the data as a stream of bytes.
-#       ByteArrayInputStream bais = new ByteArrayInputStream(buf);
-
-#       // Wrap the byte array output stream in an input stream reader,
-#       // so you can read the data as a stream of characters.
-#       InputStreamReader isr = new InputStreamReader(bais);
-
-#       // Wrap the input stream reader in a bufferred reader,
-#       // so you can read the character data a line at a time.
-#       // (A line is a sequence of chars terminated by any combination of \r and \n.) 
-#       BufferedReader br = new BufferedReader(isr);
-
-#       // The message data is contained in a single line, so read this line.
-#       String line = br.readLine();
-
-#       // Print host address and data received from it.
-#       System.out.println(
-#          "Received from " + 
-#          request.getAddress().getHostAddress() + 
-#          ": " +
-#          new String(line) );
-#    }
-# }
