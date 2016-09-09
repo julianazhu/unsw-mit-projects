@@ -15,6 +15,20 @@
 import struct
 
 
+HEADER_SIZE = 9 # bytes
+
+
+def receive_segment(sock):
+    while True:
+        data, return_addr = sock.recvfrom(48 + HEADER_SIZE)
+        header = data[:HEADER_SIZE]
+        data = data[HEADER_SIZE+1:]
+        print("Received File => Header: {} Data: {}".format(header, data))
+        segment_type, received_sequence_no, received_ack_no = interpret_header(header)
+        print("Unpacked =>  TYPE: {}, SEQ:{}, ACK:{}"
+            .format(segment_type, received_sequence_no, received_ack_no))
+        return return_addr, segment_type, received_sequence_no, received_ack_no
+
 # 'segment_type' parameter accepts "SYN", "ACK", "SYNACK", "PUSH", "FIN"
 def create_header(segment_type, sequence_number, ack_number, *data_length):
     sequence_number = format(sequence_number, '032b')
@@ -57,5 +71,4 @@ def interpret_header(header):
     else:
         print("Unknown segment type:", segment_type)
         sys.exit()
-    print("segment_type:", segment_type)
     return segment_type, sequence_number, ack_number

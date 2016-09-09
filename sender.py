@@ -7,27 +7,33 @@
 #
 # Python 3.0
 
+
 import sys
 import socket
 import datetime
 import random
+from stp_headers import receive_segment      # helper
 from stp_headers import create_header       # helper
 from stp_headers import interpret_header    # helper
 
 
-HEADER_SIZE = 9 # bytes
-
-
 def send_SYN(sequence_number):
-    header = create_header("SYN", sequence_number, 5050) #temporary ack number
+    header = create_header("SYN", sequence_number, 0)
     segment = header
     # data = "The quick brown fox blahs"
     sock.sendto(segment, (receiver_host_IP, receiver_port))
 
-def wait_for_ACK():
-    while True:
-        data, addr = sock.recvfrom(48+HEADER_SIZE)
-        print("Received Response:", data)
+def receive_SYNACK(expected_ack):
+    return_addr, segment_type, received_sequence_no, received_ack_no = receive_segment(sock)
+    if segment_type == "SYNACK" and received_ack_no == expected_ack:
+        return return_addr, received_sequence_no, received_ack_no
+    else:
+        wait_for_ACK(expected_ack)
+
+def send_ACK(return_addr, ack_number, sequence_number):
+    header = create_header("ACK", sequence_number, ack_number+1)
+    segment = header
+    sock.sendto(segment, (return_addr))
 
 # ==== MAIN ====
 # Get command line arguments
@@ -51,9 +57,12 @@ except (IndexError, ValueError):
 sock = socket.socket(socket.AF_INET,           # internet
                      socket.SOCK_DGRAM)        # UDP
 # sock.settimeout(5)                             # seconds
-initial_sequence_number = 0 # Temp => change to random no. after testing
-send_SYN(initial_sequence_number)
-wait_for_ACK()
+sequence_number = 0 # Temp => change to random no. after testing
+send_SYN(sequence_number)
+sequence_number += 1
+return_addr, received_sequence_no, received_ack_no = receive_SYNACK(sequence_number)
+print("Successfully received SYNACK")
+send_ACK(return_addr, received_sequence_no, sequence_number)
 # Send file over UDP in chunks of data no larger than max_segment_size
 # f = open(file_to_send, "rb")
 # data = f.read(48) #+ headerFIRST
