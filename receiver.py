@@ -1,6 +1,7 @@
-# Server to receive messages over UDP. The server sits in an infinite loop 
-# listening for incoming UDP packets.  When a packet comes in, the server simply 
-# sends the encapsulated data back to the client.
+# Server to receive messages over Simple Transport Protocol (STP). The server 
+# sits in an infinite loop listening for a file in sent via UDP packets from 
+# an STP client. The server then reassembles the data and writes it to file 
+# under the user-specified filename.
 #
 # Written by Juliana Zhu, z3252163
 # Written for COMP9331 16s2, Assignment 1. 
@@ -14,7 +15,6 @@ import datetime
 
 
 RECEIVER_IP = "127.0.0.1"
-BUFFER = 48                             # bytes
 
 
 # Command line arguments
@@ -34,7 +34,7 @@ sock.bind((RECEIVER_IP, receiver_port))
 # Receive file and write to specified filename.
 while True:
    data, addr = sock.recvfrom(48)
-   data = data.decode("unicode_escape")
+   data = data.decode()
    print("Received File:", data)
    with open(filename, 'a') as f:
       f.write(data)
