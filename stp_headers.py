@@ -20,14 +20,15 @@ HEADER_SIZE = 9 # bytes
 
 
 def receive_segment(sock):
-    # print("managed to get here at least")
     while True:
+        # print("managed to get here at least")
         data, return_addr = sock.recvfrom(48 + HEADER_SIZE)
+        # print("something was received")
         header = data[:HEADER_SIZE]
         data = data[HEADER_SIZE+1:]
-        print("Received File => Header: {} Data: {}".format(header, data))
+        # print("Received File => Header: {} Data: {}".format(header, data))
         segment_type, received_sequence_no, received_ack_no = interpret_header(header)
-        print("Unpacked =>  TYPE: {}, SEQ:{}, ACK:{}"
+        print("Received {}, SEQ:{}, ACK:{}"
             .format(segment_type, received_sequence_no, received_ack_no))
         return return_addr, segment_type, received_sequence_no, received_ack_no, data
 
