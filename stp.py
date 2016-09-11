@@ -18,10 +18,10 @@ import random
 
 
 class Connection:
-    header_size = 9 # bytes
 
-    def __init__(self, sock, log_filename, addr=(), receiver=(), MWS=None, 
-                MSS=None, timeout=None, pld_args=None):
+    def __init__(self, sock, log_filename, addr=(), receiver=(), mws=None, 
+                mss=1460, timeout=None, pld_args=None):
+        self.header_size = 9 # bytes
         self.sock = sock
         self.log_filename = log_filename
         self.segment = None
@@ -30,7 +30,8 @@ class Connection:
         self.receiver_addr = receiver                  # 2-tuple: (IP, port)
         self.send_filename = None
         self.output_filename = None
-        self.MWS = MWS
+        self.mws = mws
+        self.mss = int(mss) + self.header_size
         self.timeout = timeout
         self.sequence_number = 0                        # Temp => change to random no. after testing
         self.ack_number = 0                        # Temp => change to random no. after testing
@@ -42,7 +43,7 @@ class Connection:
 
     def receive_segment(self):
         while True:
-            data, addr = self.sock.recvfrom(48 + self.header_size)
+            data, addr = self.sock.recvfrom(self.mss)
             header = data[:self.header_size+1]
             data = data[self.header_size:]
             segment_type, sequence_number, ack_number = self.interpret_header(header)
@@ -120,7 +121,7 @@ class Connection:
 
     def send_data(self, filename):
         f = open(filename, "rb")
-        data = f.read(48)
+        data = f.read(self.mss - self.header_size)
         random.seed(self.pld_args[1])
         while (data):
             self.segment = Segment("PUSH", self.segment.ack + len(data), self.segment.sequence, data)
@@ -129,7 +130,7 @@ class Connection:
                 print("Sent PUSH. SEQ {}, ACK: {}, DATA:".format(self.segment.sequence, self.segment.ack, self.segment.data))
                 self.sequence_number += len(data)
                 self.receive_ACK(0)
-                data = f.read(48)
+                data = f.read(self.mss - self.header_size)
             else:
                 print("YEAH IT DIDN'T MAKE IT")
                 break
