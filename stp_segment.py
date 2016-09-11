@@ -15,7 +15,6 @@
 
 
 import sys
-import binascii
 
 
 class Segment:

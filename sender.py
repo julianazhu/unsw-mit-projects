@@ -12,7 +12,6 @@ import sys
 import socket
 import stp
 
-
 def send_file():
     addr = (receiver_host_IP, receiver_port)
     syn = stp.send_SYN(sock, addr)
@@ -30,7 +29,6 @@ def send_file():
     print("Sent {} SEQ: {} ACK: {}".format(last_ack.type, last_ack.sequence, last_ack.ack))
     print("Received final FIN and sent final ACK, TERMINATING")
 
-
 # Get command line arguments
 try:
     receiver_host_IP = sys.argv[1]
@@ -38,7 +36,7 @@ try:
     file_to_send = sys.argv[3]
     # max_window_size = sys.argv[4]            # number of MSSs allowed in window
     # max_segment_size = sys.argv[5]           # bytes
-    # timeout = sys.argv[6]                    # milliseconds
+    # timeout = sys.argv[500]                    # milliseconds
 
     # # PLD module command line arguments
     # pdrop = sys.argv[7]                      # probability of a segment drop
@@ -51,6 +49,5 @@ except (IndexError, ValueError):
 # Create the socket to internet, UDP
 sock = socket.socket(socket.AF_INET,           # internet
                      socket.SOCK_DGRAM)        # UDP
-
 send_file()
 sock.close()

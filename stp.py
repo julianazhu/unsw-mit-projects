@@ -111,6 +111,7 @@ def send_data(sock, prior, file_to_send):
     while (data):
         segment = Segment("PUSH", prior.ack + len(data), prior.sequence, data)
         print("Sent PUSH. SEQ {}, ACK: {}:".format(segment.sequence, segment.ack))
+        print("segment header length = ", len(segment.package))
         if(sock.sendto(segment.package, prior.addr)):
             prior = receive_ACK(sock, segment)
             data = f.read(48)
@@ -129,13 +130,9 @@ def receive_data(sock, prior, filename):
             print("ADDED: ", segment.data)
             prior = send_ACK(sock, segment)
         elif segment.type == "FIN" and segment.ack == prior.sequence:
-            try:
-                with open(filename, 'w') as f:
-                    f.write(assembled_file)
-                    f.close()
-            except OSError:
-                print("File already exists. Exiting.")
-                sys.exit()
+            with open(filename, 'w') as f:
+                f.write(assembled_file)
+                f.close()
             return segment
         print("--------------------------------------")
 
