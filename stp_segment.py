@@ -1,4 +1,4 @@
-# This class defines a "segment" for use with Simple Transport Protocol (STP)
+# This class module defines a "segment" for use with Simple Transport Protocol (STP)
 # where each segment consists of a 9 byte header and a byte array of data 
 # (length defined by the user) that is designed to be passed between a STP 
 # sender and receiver. 
@@ -30,7 +30,7 @@ class Segment:
         self.data = data
         try:
             self.addr = addr
-            self.addr = self.addr[0]
+            self.addr = self.addr
         except:
             pass
         self.package = self.header + bytearray(data, 'ascii')

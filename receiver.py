@@ -11,25 +11,7 @@
 
 import sys
 import socket
-import stp
-
-RECEIVER_IP = "127.0.0.1"
-
-
-def receive_file():
-    syn = stp.receive_segment(sock)
-    synack = stp.send_SYNACK(sock, syn)
-    print("Sent {} SEQ: {} ACK: {}".format(synack.type, synack.sequence, synack.ack))
-    synack_ack = stp.receive_incremented_ACK(sock, synack)
-    push = stp.receive_data(sock, synack, filename)
-    ack = stp.send_incremented_ACK(sock, push)
-    ack.addr = push.addr
-    print("Sent {} SEQ: {} ACK: {}".format(ack.type, ack.sequence, ack.ack))
-    fin = stp.send_FIN(sock, ack)
-    print("Sent {} SEQ: {} ACK: {}".format(fin.type, fin.sequence, fin.ack))
-    fin.addr = ack.addr
-    stp.receive_incremented_ACK(sock, fin)
-    print("All done, terminating")
+from stp import Connection
 
 # Command line arguments
 try:
@@ -39,9 +21,11 @@ except (IndexError, ValueError):
     print("Incorrect arguments. Usage: receiver.py <receiver_port> <file.txt>")
     sys.exit()
 
-# Open the listening socket port.
-sock = socket.socket(socket.AF_INET,                # internet
-                            socket.SOCK_DGRAM)      # UDP
-sock.bind((RECEIVER_IP, receiver_port))
-receive_file()
+# Open the listening socket port, create the STP connection, receive the file and close.
+sock = socket.socket(socket.AF_INET,                 # internet
+                            socket.SOCK_DGRAM,
+                            socket.IPPROTO_UDP)      # UDP
+sock.bind(('127.0.0.1', receiver_port))
+connection = Connection(sock, ('127.0.0.1', receiver_port))
+connection.receive_file(filename)
 sock.close()
