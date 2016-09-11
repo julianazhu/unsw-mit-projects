@@ -11,14 +11,16 @@
 
 import struct
 import sys
+import time
 from stp_segment import Segment                         # helper
 
 
 class Connection:
     header_size = 9 # bytes
 
-    def __init__(self, sock, addr=(), receiver=(), MWS=None, MSS=None, timeout=None):
+    def __init__(self, sock, log_filename, addr=(), receiver=(), MWS=None, MSS=None, timeout=None):
         self.sock = sock
+        self.log_filename = log_filename
         self.segment = None
         self.prev_segment = None
         self.addr = addr                               # 2-tuple: (IP, port)
@@ -29,6 +31,7 @@ class Connection:
         self.timeout = timeout
         self.sequence_number = 0                        # Temp => change to random no. after testing
         self.ack_number = 0                        # Temp => change to random no. after testing
+        self.start = time.clock()
 
         l = vars(self)
         print(l)
@@ -40,6 +43,7 @@ class Connection:
             data = data[self.header_size:]
             segment_type, sequence_number, ack_number = self.interpret_header(header)
             self.segment = Segment(segment_type, sequence_number, ack_number, data, addr)
+            self.update_log('rec')
             print("Received TYPE: {}, SEQ:{}, ACK: {}".format(self.segment.type, self.segment.sequence, self.segment.ack))
             self.ack_number = self.segment.sequence
             print("NEW ACK NUMBER:", self.segment.sequence)
@@ -72,6 +76,7 @@ class Connection:
         self.segment = Segment("SYN", self.sequence_number, ack_number, '')
         print("Sending SYN to:", self.receiver_addr)
         self.sock.sendto(self.segment.package, self.receiver_addr)
+        self.update_log('snd')
         self.sequence_number += 1
 
     def receive_SYN(self):
@@ -85,6 +90,7 @@ class Connection:
     def send_SYNACK(self):
         self.segment = Segment("SYNACK", self.sequence_number, self.segment.sequence + 1, '')
         self.sock.sendto(self.segment.package, self.receiver_addr)
+        self.update_log('snd')
 
     def receive_SYNACK(self):
         self.receive_segment()
@@ -97,6 +103,7 @@ class Connection:
     def send_ACK(self, increment): 
         self.segment = Segment("ACK", self.sequence_number, self.segment.sequence + increment, '')
         self.sock.sendto(self.segment.package, self.receiver_addr)
+        self.update_log('snd')
         return
 
     def receive_ACK(self, increment):
@@ -113,6 +120,7 @@ class Connection:
         while (data):
             self.segment = Segment("PUSH", self.segment.ack + len(data), self.segment.sequence, data)
             if(self.sock.sendto(self.segment.package, self.receiver_addr)):
+                self.update_log('snd')
                 print("Sent PUSH. SEQ {}, ACK: {}, DATA:".format(self.segment.sequence, self.segment.ack, self.segment.data))
                 self.sequence_number += len(data)
                 self.receive_ACK(0)
@@ -142,6 +150,7 @@ class Connection:
         self.sequence_number += 1
         self.segment = Segment("FIN", self.sequence_number, self.ack_number, '')
         self.sock.sendto(self.segment.package, self.receiver_addr)
+        self.update_log('snd')
         return 
 
     def receive_FIN(self):
@@ -155,8 +164,8 @@ class Connection:
 
     def send_file(self, filename):
         self.send_SYN()
-        print("Sent {} SEQ: {} ACK: {}".format(self.segment.type, self.segment.sequence, self.segment.ack))
         self.receive_SYNACK()
+        print("Sent {} SEQ: {} ACK: {}".format(self.segment.type, self.segment.sequence, self.segment.ack))
         self.send_ACK(1)
         print("Sent {} SEQ: {} ACK: {}".format(self.segment.type, self.segment.sequence, self.segment.ack))
         self.send_data(filename)
@@ -181,3 +190,12 @@ class Connection:
         print("Sent: {} SEQ: {} ACK: {}".format(self.segment.type, self.segment.sequence, self.segment.ack))
         self.receive_ACK(1)
         print("All done, terminating")
+
+    def update_log(self, entry_type):
+        log_entry = '{:6}'.format(entry_type) + self.time_since_start() + self.segment.log + '\n'
+        with open(self.log_filename, 'a') as f:
+            f.write(log_entry)
+            f.close()
+
+    def time_since_start(self):
+        return '{:6}'.format(str(round((time.clock() - self.start) * 1000, 2)))

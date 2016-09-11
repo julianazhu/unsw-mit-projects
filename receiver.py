@@ -26,6 +26,6 @@ sock = socket.socket(socket.AF_INET,                 # internet
                             socket.SOCK_DGRAM,
                             socket.IPPROTO_UDP)      # UDP
 sock.bind(('127.0.0.1', receiver_port))
-connection = Connection(sock, ('127.0.0.1', receiver_port))
+connection = Connection(sock, 'Receiver_log.txt',('127.0.0.1', receiver_port))
 connection.receive_file(filename)
 sock.close()

@@ -34,6 +34,7 @@ sock = socket.socket(socket.AF_INET,           # internet
                      socket.SOCK_DGRAM,
                      socket.IPPROTO_UDP)       # UDP
 connection = Connection(sock, 
+                        'Sender_log.txt',
                         None, 
                         (receiver_host_IP, receiver_port), 
                         max_window_size, 
