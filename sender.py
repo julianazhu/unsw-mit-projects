@@ -2,6 +2,9 @@
 # receiver server over UDP, and sends a user-specified file to the server using
 # a series of datagram packets. 
 #
+# The connection establishment and teardown segments from the Sender bypass the 
+# PLD module and are not dropped.
+#
 # Written by Juliana Zhu, z3252163 
 # Written for COMP9331 16s2, Assignment 1. 
 #
@@ -22,8 +25,8 @@ try:
     timeout = sys.argv[6]                    # milliseconds
 
     # # PLD module command line arguments
-    # pdrop = sys.argv[7]                      # probability of a segment drop
-    # seed = int(sys.argv[8])                  # random number seed
+    pdrop = sys.argv[7]                      # probability of a segment drop
+    seed = int(sys.argv[8])                  # random number seed
 except (IndexError, ValueError):
     print('Incorrect arguments. Usage: sender.py <receiver_host_ip>' 
         ' <receiver_port> <file.txt> <MWS> <MSS> <timeout> <pdrop> <seed>')
@@ -39,6 +42,7 @@ connection = Connection(sock,
                         (receiver_host_IP, receiver_port), 
                         max_window_size, 
                         max_segment_size, 
-                        timeout)
+                        timeout,
+                        (pdrop, seed))
 connection.send_file(file_to_send)
 sock.close()

@@ -2,7 +2,7 @@
 # Transport Protocol (STP) including functions for sending and receiving 
 # SYN, SYNACK, ACK, PUSH and FIN type segments. 
 #
-#
+# 
 # Written by Juliana Zhu, z3252163 
 # Written for COMP9331 16s2, Assignment 1. 
 #
@@ -13,12 +13,15 @@ import struct
 import sys
 import time
 from stp_segment import Segment                         # helper
+import pld
+import random
 
 
 class Connection:
     header_size = 9 # bytes
 
-    def __init__(self, sock, log_filename, addr=(), receiver=(), MWS=None, MSS=None, timeout=None):
+    def __init__(self, sock, log_filename, addr=(), receiver=(), MWS=None, 
+                MSS=None, timeout=None, pld_args=None):
         self.sock = sock
         self.log_filename = log_filename
         self.segment = None
@@ -32,6 +35,7 @@ class Connection:
         self.sequence_number = 0                        # Temp => change to random no. after testing
         self.ack_number = 0                        # Temp => change to random no. after testing
         self.start = time.clock()
+        self.pld_args = pld_args
 
         l = vars(self)
         print(l)
@@ -76,7 +80,7 @@ class Connection:
         self.segment = Segment("SYN", self.sequence_number, ack_number, '')
         print("Sending SYN to:", self.receiver_addr)
         self.sock.sendto(self.segment.package, self.receiver_addr)
-        self.update_log('snd')
+        segment_time = self.update_log('snd')
         self.sequence_number += 1
 
     def receive_SYN(self):
@@ -90,7 +94,7 @@ class Connection:
     def send_SYNACK(self):
         self.segment = Segment("SYNACK", self.sequence_number, self.segment.sequence + 1, '')
         self.sock.sendto(self.segment.package, self.receiver_addr)
-        self.update_log('snd')
+        segment_send_time = self.update_log('snd')
 
     def receive_SYNACK(self):
         self.receive_segment()
@@ -117,14 +121,18 @@ class Connection:
     def send_data(self, filename):
         f = open(filename, "rb")
         data = f.read(48)
+        random.seed(self.pld_args[1])
         while (data):
             self.segment = Segment("PUSH", self.segment.ack + len(data), self.segment.sequence, data)
-            if(self.sock.sendto(self.segment.package, self.receiver_addr)):
+            if (pld.send_datagram(float(self.pld_args[0]), self.sock, self.segment.package, self.receiver_addr)):
                 self.update_log('snd')
                 print("Sent PUSH. SEQ {}, ACK: {}, DATA:".format(self.segment.sequence, self.segment.ack, self.segment.data))
                 self.sequence_number += len(data)
                 self.receive_ACK(0)
                 data = f.read(48)
+            else:
+                print("YEAH IT DIDN'T MAKE IT")
+                break
             print("--------------------------------------")
         f.close()
 
@@ -192,10 +200,13 @@ class Connection:
         print("All done, terminating")
 
     def update_log(self, entry_type):
-        log_entry = '{:6}'.format(entry_type) + self.time_since_start() + self.segment.log + '\n'
+        log_time, segment_time = self.time_since_start()
+        log_entry = '{:6}'.format(entry_type) + log_time + self.segment.log + '\n'
         with open(self.log_filename, 'a') as f:
             f.write(log_entry)
             f.close()
+        return segment_time
 
     def time_since_start(self):
-        return '{:6}'.format(str(round((time.clock() - self.start) * 1000, 2)))
+        segment_time = time.clock() - self.start
+        return '{:6}'.format(str(round((segment_time) * 1000, 2))), segment_time
