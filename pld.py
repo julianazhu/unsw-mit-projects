@@ -15,7 +15,7 @@ import random
 def send_datagram(pdrop, sock, stp_package, address):
     roll = random.random();
 
-    print("luck = {}, roll = {}.".format(1-pdrop, roll))
+    # print("luck = {}, roll = {}.".format(1-pdrop, roll))
 
     if (roll <= (1-pdrop)):
         sock.sendto(stp_package, address)

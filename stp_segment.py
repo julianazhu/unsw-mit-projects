@@ -17,7 +17,6 @@
 import sys
 
 
-
 class Segment:
     def __init__(self, segment_type, sequence_number, ack_number, data, *addr):
         self.type = segment_type
@@ -36,6 +35,7 @@ class Segment:
             pass
         self.package = self.header + bytearray(data, 'ascii')
         self.log = self.create_log_entry()
+        self.time = 0
 
     # 'self.type' parameter accepts "SYN", "ACK", "SYNACK", "PUSH", "FIN"
     def create_header(self):

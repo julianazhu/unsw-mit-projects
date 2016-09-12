@@ -20,7 +20,7 @@ try:
     receiver_host_IP = sys.argv[1]
     receiver_port = int(sys.argv[2])
     file_to_send = sys.argv[3]
-    max_window_size = sys.argv[4]            # number of MSSs allowed in window
+    max_window_size = sys.argv[4]            # bytes
     max_segment_size = sys.argv[5]           # bytes
     timeout = sys.argv[6]                    # milliseconds
 

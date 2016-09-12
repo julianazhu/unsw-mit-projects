@@ -33,13 +33,11 @@ class Connection:
         self.mws = mws
         self.mss = int(mss) + self.header_size
         self.timeout = timeout
-        self.sequence_number = 0                        # Temp => change to random no. after testing
-        self.ack_number = 0                        # Temp => change to random no. after testing
+        self.sequence_number = 0                        
+        self.last_ack = 0                        
         self.start = time.clock()
         self.pld_args = pld_args
-
-        l = vars(self)
-        print(l)
+        self.buffer = []
 
     def receive_segment(self):
         while True:
@@ -50,7 +48,7 @@ class Connection:
             self.segment = Segment(segment_type, sequence_number, ack_number, data, addr)
             self.update_log('rec')
             print("Received TYPE: {}, SEQ:{}, ACK: {}".format(self.segment.type, self.segment.sequence, self.segment.ack))
-            self.ack_number = self.segment.sequence
+            self.last_ack = self.segment.sequence
             print("NEW ACK NUMBER:", self.segment.sequence)
             return
 
@@ -107,31 +105,35 @@ class Connection:
 
     def send_ACK(self, increment): 
         self.segment = Segment("ACK", self.sequence_number, self.segment.sequence + increment, '')
+        self.last_ack = self.segment.ack
         self.sock.sendto(self.segment.package, self.receiver_addr)
         self.update_log('snd')
         return
 
     def receive_ACK(self, increment):
-        self.receive_segment()
-        print("expected_ack= {}, received_ack_no= {}".format(self.sequence_number + increment, self.segment.ack))
-        if self.segment.type == "ACK" and self.segment.ack == self.sequence_number + increment:
-            return
-        else:
-            self.receive_ACK(increment)
+        if self.receive_segment():
+            print("expected_ack= {}, received_ack_no= {}".format(self.sequence_number + increment, self.segment.ack))
+            if self.segment.type == "ACK" and self.segment.ack == self.sequence_number + increment:
+                return
+            else:
+                self.receive_ACK(increment)
 
     def send_data(self, filename):
         f = open(filename, "rb")
         data = f.read(self.mss - self.header_size)
         random.seed(self.pld_args[1])
         while (data):
-            self.segment = Segment("PUSH", self.segment.ack + len(data), self.segment.sequence, data)
-            if (pld.send_datagram(float(self.pld_args[0]), self.sock, self.segment.package, self.receiver_addr)):
+            self.segment = Segment("PUSH", self.sequence_number + len(data), self.last_ack, data)
+            sent = pld.send_datagram(float(self.pld_args[0]), self.sock, self.segment.package, self.receiver_addr)
+            if sent:
                 self.update_log('snd')
                 print("Sent PUSH. SEQ {}, ACK: {}, DATA:".format(self.segment.sequence, self.segment.ack, self.segment.data))
-                self.sequence_number += len(data)
-                self.receive_ACK(0)
+                self.sequence_number = self.segment.sequence
+                while time.clock() <= self.segment.time:
+                    self.receive_ACK(0)
                 data = f.read(self.mss - self.header_size)
             else:
+                self.update_log('drop')
                 print("YEAH IT DIDN'T MAKE IT")
                 break
             print("--------------------------------------")
@@ -157,7 +159,7 @@ class Connection:
 
     def send_FIN(self):
         self.sequence_number += 1
-        self.segment = Segment("FIN", self.sequence_number, self.ack_number, '')
+        self.segment = Segment("FIN", self.sequence_number, self.last_ack, '')
         self.sock.sendto(self.segment.package, self.receiver_addr)
         self.update_log('snd')
         return 
@@ -172,6 +174,7 @@ class Connection:
             self.receive_FIN()
 
     def send_file(self, filename):
+        self.start_log()
         self.send_SYN()
         self.receive_SYNACK()
         print("Sent {} SEQ: {} ACK: {}".format(self.segment.type, self.segment.sequence, self.segment.ack))
@@ -187,27 +190,31 @@ class Connection:
         print("Received final FIN and sent final ACK, TERMINATING")
 
     def receive_file(self, filename):
+        self.start_log()
         self.receive_SYN()
         self.send_SYNACK()
         print("Sent: {} SEQ: {} ACK: {}".format(self.segment.type, self.segment.sequence, self.segment.ack))
         self.receive_ACK(1)
         self.receive_data(filename)
         self.send_ACK(1)
-        self.ack_number += 1
         print("Sent: {} SEQ: {} ACK: {}".format(self.segment.type, self.segment.sequence, self.segment.ack))
         self.send_FIN()
         print("Sent: {} SEQ: {} ACK: {}".format(self.segment.type, self.segment.sequence, self.segment.ack))
         self.receive_ACK(1)
         print("All done, terminating")
 
+    def start_log(self):
+        open(self.log_filename, 'w').close()
+
     def update_log(self, entry_type):
-        log_time, segment_time = self.time_since_start()
+        log_time = self.time_since_start()
         log_entry = '{:6}'.format(entry_type) + log_time + self.segment.log + '\n'
         with open(self.log_filename, 'a') as f:
             f.write(log_entry)
             f.close()
-        return segment_time
+        return
 
     def time_since_start(self):
-        segment_time = time.clock() - self.start
-        return '{:6}'.format(str(round((segment_time) * 1000, 2))), segment_time
+        segment_time = time.clock()
+        self.segment.time = segment_time
+        return '{:6}'.format(str(round((segment_time - self.start) * 1000, 2)))
