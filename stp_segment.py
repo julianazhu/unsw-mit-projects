@@ -28,6 +28,7 @@ class Segment:
         except:
             pass
         self.data = data
+        print("data = ", data)
         try:
             self.addr = addr
             self.addr = self.addr
