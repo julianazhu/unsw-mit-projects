@@ -11,7 +11,7 @@
 
 import sys
 import socket
-from stp import Connection
+from connection import Connection
 
 # Command line arguments
 try:

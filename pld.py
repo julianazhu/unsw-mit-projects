@@ -10,17 +10,19 @@
 
 
 import random
+from segment import Segment
 
-
-def send_datagram(pdrop, sock, stp_package, address):
-    roll = random.random();
-
-    # print("luck = {}, roll = {}.".format(1-pdrop, roll))
-
-    if (roll <= (1-pdrop)):
-        sock.sendto(stp_package, address)
-        print("packet was SUCCESSFULLY TRANSMITTED")
-        return True
+def send_datagram(pdrop, sock, segment):
+    pdrop = float(pdrop)
+    # All non-PUSH packets bypass this segment.
+    if segment.type == "P":
+        roll = random.random();
+        if segment.type == "P" and (roll <= (1-pdrop)):
+            sock.sendto(segment.package, segment.addr)
+            return True
+        else:
+            print("A packet was DROPPED")
+            return False
     else:
-        print("packet was DROPPED")
-        return False
+        sock.sendto(segment.package, segment.addr)
+        return True

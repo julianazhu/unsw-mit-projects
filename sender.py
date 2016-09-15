@@ -13,7 +13,7 @@
 
 import sys
 import socket
-from stp import Connection                # helper
+from connection import Connection                # helper
 
 # Get command line arguments
 try:
