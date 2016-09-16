@@ -21,14 +21,15 @@ class Log:
         self.data_segments_sent = 0
         self.packets_dropped = 0
         self.packets_retransmitted = 0
-        self.duplicate_acknowledgments = 0
+        self.duplicate_acks = 0
+        self.bytes_received = 0
+        self.data_segments_received = 0
+        self.duplicate_segments = 0
+
         open(self.filename, 'w').close()
 
     def update(self, entry_type, segment):
-        self.bytes_transferred += len(segment.data)
-        if entry_type == 'snd':
-            self.data_segments_sent += 1
-        elif entry_type == 'drop':
+        if entry_type == 'drop':
             self.packets_dropped += 1
         elif entry_type == 'ret':
             self.packets_retransmitted += 1
@@ -49,13 +50,22 @@ class Log:
         segment_time = time.clock()
         return '{:6}'.format(str(round((segment_time - self.start) * 1000, 2)))
 
-    def close(self):
+    def sender_close(self):
         log_entry = ""
         log_entry += "Amount of Data Transferred (in bytes): {} \n".format(self.bytes_transferred)
         log_entry += "Number of Data Segments Sent (excluding retransmissions): {} \n".format(self.data_segments_sent)
         log_entry += "Number of Packets Dropped: {} \n".format(self.packets_dropped)
         log_entry += "Number of Retransmitted Segments: {} \n".format(self.packets_retransmitted)
-        log_entry += "Number of Duplicate Acknowledgements received: {} \n".format(self.duplicate_acknowledgments)        
+        log_entry += "Number of Duplicate Acknowledgements received: {} \n".format(self.duplicate_acks)        
+        with open(self.filename, 'a') as f:
+            f.write(log_entry)
+            f.close()
+
+    def receiver_close(self):
+        log_entry = ""
+        log_entry += "Amount of Data Received (in bytes): {} \n".format(self.bytes_received)
+        log_entry += "Number of Data Segments Received: {} \n".format(self.data_segments_received)
+        log_entry += "Number of Duplicate Segments received: {} \n".format(self.duplicate_segments)        
         with open(self.filename, 'a') as f:
             f.write(log_entry)
             f.close()

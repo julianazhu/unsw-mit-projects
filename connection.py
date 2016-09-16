@@ -42,7 +42,6 @@ class Connection:
         self.last_byte_received = 0
         self.next_ack_expected = 0 
         self.duplicate_acks = 0
-        self.total_duplicate_acks = 0
 
     # Do not use for retransmissions
     def send_segment(self, segment):
@@ -50,15 +49,14 @@ class Connection:
         self.sent_segments[segment.sequence] = segment
         self.last_byte_sent = segment.sequence
         if sent:
-            self.log.update('snd', segment)
             print("SENT: {} SEQ: {} ACK: {}, DATA: {}.".format(segment.type, segment.sequence, segment.ack, segment.data))
-            print("LAST BYTE SENT = ", self.last_byte_sent)
+            # print("LAST BYTE SENT = ", self.last_byte_sent)
             print("--------------------------------------")
             return True
         else:
             self.log.update('drop', segment)
             print("DROPPED PACKET TYPE {}, SEQ: {}, ACK: {}".format(segment.type, segment.sequence, segment.ack))
-            print("LAST BYTE SENT = ", self.last_byte_sent)
+            # print("LAST BYTE SENT = ", self.last_byte_sent)
             print("--------------------------------------")
             return False
 
@@ -80,18 +78,15 @@ class Connection:
     def correct_receipt(self):
         self.received_segments[self.segment.sequence] = self.segment
         self.last_byte_received = self.segment.sequence
-        print("APPEARS TO BE CORRECT")
-        print("LAST BYTE RECEIVED = ", self.last_byte_received)
-        print("LAST BYTE SENT = ", self.last_byte_sent)
-        print("NEXT BYTE EXPECTED = ", self.next_byte_expected)
-        print("--------------------------------------")
 
     def establish_send_connection(self):
         self.segment = Segment("S", 0, 0, '', self.to_addr)
         self.send_segment(self.segment)
+        self.log.update('snd', self.segment)
         self.receive_segment()
         self.segment = Segment("A", 1, 1, '', self.to_addr)
         self.send_segment(self.segment)
+        self.log.update('snd', self.segment)
         self.next_byte_to_send = 1
         self.last_byte_received = 1
         self.next_byte_expected = 1
@@ -106,6 +101,7 @@ class Connection:
         self.correct_receipt()
         self.segment = Segment("SA", 0, 1, '', self.to_addr)
         self.send_segment(self.segment)
+        self.log.update('snd', self.segment)
         self.receive_segment()
         self.correct_receipt()
         self.next_byte_expected = 1
@@ -133,8 +129,10 @@ class Connection:
             elif self.segment.type == "A" and self.segment.ack == self.last_byte_acked and self.duplicate_acks < 3:
                 print("Duplicate ACK, incrementing duplicate counter")
                 self.duplicate_acks += 1
+                self.log.duplicate_acks += 1
             elif self.segment.type == "A" and self.segment.ack == self.last_byte_acked and self.duplicate_acks >= 3:
                 print("THREE DUPLICATE ACKS, RESETTING WINDOW")
+                self.log.duplicate_acks += 1
                 self.reset_window
             else:
                 print("THIS ACK IS NOT IN ANY OF THE CATEGORIES :/")
@@ -146,7 +144,8 @@ class Connection:
         while self.next_byte_to_send in self.sent_segments:
             retransmission = self.sent_segments[self.next_byte_to_send]
             print("RESENDING:")
-            self.send_segment(retransmission)
+            if self.send_segment(retransmission):
+                self.log.update('ret', retransmission)
             self.log.packets_retransmitted += 1
             self.next_byte_to_send += len(retransmission.data)
             self.duplicate_acks = 0
@@ -165,22 +164,20 @@ class Connection:
         print("*******************STARTING THE SEND DATA FUNCTION******************")
         self.sock.settimeout(self.timeout / 1000)
         random.seed(self.pld_args[1])
-
         f = open(self.filename, "rb")
         data = f.read(self.mss)
-        print("TRYING THE SEND DATA LOOP AGAIN")
         while (data):
             bytes_in_flight = self.last_byte_sent - self.last_byte_acked
-            print("CHECKING THAT BYTES IN FLIGHT: {} LESS THAN MWS: {}".format(bytes_in_flight, self.mws))
             if bytes_in_flight + self.mss <= self.mws: 
                 if self.next_byte_to_send in self.sent_segments:
                     self.retransmit_window()
                 else:
                     self.segment = Segment("P", self.next_byte_to_send, self.last_byte_received, data, self.to_addr)
                     self.send_segment(self.segment)
+                    self.log.data_segments_sent += 1
+                    self.next_byte_to_send += self.segment.data_length
+                    self.log.bytes_transferred += self.segment.data_length
                     data = f.read(self.mss) 
-                    print("JUST READ IN NEXT DATA SEGMENT:", data)
-                    self.next_byte_to_send += len(self.segment.data)
             else:
                 while self.receive_ACK():
                     bytes_in_flight = self.last_byte_sent - self.last_byte_acked
@@ -191,11 +188,6 @@ class Connection:
     def receive_data(self):
         print("*********************STARTING THE RECEIVE DATA FUNCTION*******************")
         assembled_file = "" 
-
-        print("LAST BYTE RECEIVED = ", self.last_byte_received)
-        print("LAST BYTE SENT = ", self.last_byte_sent)
-        print("NEXT BYTE EXPECTED = ", self.next_byte_expected)
-        print("--------------------------------------")
         while True:
             self.receive_segment()
             if self.segment.type == "P" and self.segment.ack == self.last_byte_sent and self.segment.sequence == self.next_byte_expected:
@@ -205,10 +197,13 @@ class Connection:
                 self.next_byte_expected += len(self.segment.data)
                 # ACK immediately as STP does not support delayed ACKs.
                 self.last_byte_received = self.segment.sequence
+                self.log.bytes_received += self.segment.data_length
+                self.log.data_segments_received += 1
                 self.send_ACK()
             elif self.segment.type == "F":
                 return assembled_file
             else: 
+                self.log.duplicate_segments += 1
                 print("IGNORED: ", self.segment.data)
                 print("expected ack: {}, received ack: {}".format(self.last_byte_sent, self.segment.ack))
                 print("Expected sequence: {}, received sequence: {}".format(self.next_byte_expected, self.segment.sequence))
@@ -220,11 +215,13 @@ class Connection:
         sequence_number = last_segment.sequence + len(last_segment.data)
         self.segment = Segment("F", sequence_number, self.last_byte_received, '', self.to_addr)
         self.send_segment(self.segment)
+        self.log.update('snd', self.segment)
         self.receive_segment()
         if self.segment.type == "FA" and self.segment.ack == self.last_byte_sent:
             self.correct_receipt()
         self.segment = Segment("A", self.segment.ack, self.segment.sequence + 1, '', self.to_addr)
         self.send_segment(self.segment)
+        self.log.update('snd', self.segment)
         return True
 
     def teardown_receive_connection(self, assembled_file):
@@ -236,6 +233,7 @@ class Connection:
             f.close()
         self.segment = Segment("FA", self.last_byte_acked + 1, self.last_byte_received, '', self.to_addr)
         self.send_segment(self.segment)
+        self.log.update('snd', self.segment)
         self.next_ack_expected = 3
         self.receive_segment()
         if self.segment.type == "A" and self.segment.ack == self.next_ack_expected:
@@ -255,7 +253,7 @@ class Connection:
             if self.last_byte_acked != last_sequence_number:
                 self.retransmit_window()
         self.teardown_send_connection()
-        self.log.close()
+        self.log.sender_close()
         print("All done, terminating")
 
     def receive_file(self, filename):
@@ -263,5 +261,5 @@ class Connection:
         self.establish_receive_connection()
         assembled_file = self.receive_data()
         self.teardown_receive_connection(assembled_file)
-        self.log.close()
+        self.log.receiver_close()
         print("All done, terminating")
