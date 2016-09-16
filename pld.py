@@ -1,3 +1,5 @@
+#!/usr/bin/python3 -u
+#
 # This module implements Packet Loss and Delay (PLD) for Simple Transport
 # Protocol (STP). Upon receiving an STP segment, this module will drop
 # the datagram with a probability of 'pdrop', and forward the datagram with

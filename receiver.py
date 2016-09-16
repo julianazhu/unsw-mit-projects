@@ -1,3 +1,5 @@
+#!/usr/bin/python3 -u
+#
 # Server to receive messages over Simple Transport Protocol (STP). The server 
 # sits in an infinite loop listening for a file in sent via UDP packets from 
 # an STP client. The server then reassembles the data and writes it to file 

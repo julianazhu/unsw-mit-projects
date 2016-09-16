@@ -1,3 +1,5 @@
+#!/usr/bin/python3 -u
+#
 # This module implements a log for Simple Transport Protocol (STP) Senders
 # and Receivers. 
 #
@@ -8,7 +10,7 @@
 
 
 from segment import Segment
-import time
+from datetime import datetime
 
 
 class Log:
@@ -36,7 +38,7 @@ class Log:
 
         if entry_type == 'ret':
             entry_type = 'snd'
-        code = '{:>4}'.format(segment.type)
+        code = '{:>8}'.format(segment.type)
         sequence_number = '{:6}'.format(int(segment.sequence))
         data_length = '{:6}'.format(len(segment.data))
         ack_number = '{:6}'.format(int(segment.ack))
@@ -47,8 +49,11 @@ class Log:
         return
 
     def time_since_start(self, segment):
-        segment_time = time.clock()
-        return '{:6}'.format(str(round((segment_time - self.start) * 1000, 2)))
+        segment_time = datetime.now()
+        diff = segment_time - self.start
+        millisecond_diff = diff.seconds * 1000 + diff.microseconds / 1000.0
+        print("DIFF = ", millisecond_diff)
+        return '{:8}'.format(str(round(millisecond_diff, 2)))
 
     def sender_close(self):
         log_entry = ""

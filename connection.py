@@ -1,3 +1,5 @@
+#!/usr/bin/python3 -u
+#
 # This class module contains all of the basic functions required for Simple
 # Transport Protocol (STP) including functions for sending and receiving 
 # SYN, SYNACK, ACK, PUSH and FIN type segments. 
@@ -11,7 +13,7 @@
 
 import struct
 import sys
-import time
+from datetime import datetime
 import socket
 import random
 import pld
@@ -25,15 +27,13 @@ class Connection:
                 mss=1460, timeout=99999, pld_args=(0,0)):
         self.header_size = 9                        # bytes
         self.sock = sock
-        self.start = time.clock()
-        self.log = Log(log_filename, self.start)
         self.to_addr = receiver                     # 2-tuple: (IP, port)
         self.filename = None
         self.mws = int(mws)
         self.mss = int(mss)
         self.timeout = float(timeout)
         self.pld_args = pld_args
-
+        self.log_filename = log_filename
         self.sent_segments = {}
         self.received_segments = {}
         self.last_byte_sent = 0
@@ -80,6 +80,8 @@ class Connection:
         self.last_byte_received = self.segment.sequence
 
     def establish_send_connection(self):
+        self.start = datetime.now()
+        self.log = Log(self.log_filename, self.start)
         self.segment = Segment("S", 0, 0, '', self.to_addr)
         self.send_segment(self.segment)
         self.log.update('snd', self.segment)
@@ -96,6 +98,8 @@ class Connection:
         print("CONNECTION ESTABLISHED")
 
     def establish_receive_connection(self):
+        self.start = datetime.now()
+        self.log = Log(self.log_filename, self.start)
         self.receive_segment()
         self.to_addr = self.segment.addr
         self.correct_receipt()
@@ -173,7 +177,8 @@ class Connection:
                     self.retransmit_window()
                 else:
                     self.segment = Segment("P", self.next_byte_to_send, self.last_byte_received, data, self.to_addr)
-                    self.send_segment(self.segment)
+                    if self.send_segment(self.segment):
+                        self.log.update('snd', self.segment)
                     self.log.data_segments_sent += 1
                     self.next_byte_to_send += self.segment.data_length
                     self.log.bytes_transferred += self.segment.data_length
@@ -200,6 +205,7 @@ class Connection:
                 self.log.bytes_received += self.segment.data_length
                 self.log.data_segments_received += 1
                 self.send_ACK()
+                self.log.update('snd', self.segment)
             elif self.segment.type == "F":
                 return assembled_file
             else: 

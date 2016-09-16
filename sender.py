@@ -1,3 +1,5 @@
+#!/usr/bin/python3 -u
+#
 # This programs implements a Simple Transport Protocol (STP) connection with a 
 # receiver server over UDP, and sends a user-specified file to the server using
 # a series of datagram packets. 

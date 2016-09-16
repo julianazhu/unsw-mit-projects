@@ -1,3 +1,5 @@
+#!/usr/bin/python3 -u
+#
 # This class module defines a "segment" for use with Simple Transport Protocol (STP)
 # where each segment consists of a 9 byte header and a byte array of data 
 # (length defined by the user) that is designed to be passed between a STP 
