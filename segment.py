@@ -24,6 +24,7 @@ class Segment:
         self.sequence = sequence_number
         self.ack = ack_number
         self.data = data
+        self.data_length = len(data)
         self.header = self.create_header()
         try:
             self.package = self.header + bytearray(data, 'ascii')

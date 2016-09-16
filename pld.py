@@ -21,7 +21,6 @@ def send_datagram(pdrop, sock, segment):
             sock.sendto(segment.package, segment.addr)
             return True
         else:
-            print("A packet was DROPPED")
             return False
     else:
         sock.sendto(segment.package, segment.addr)
